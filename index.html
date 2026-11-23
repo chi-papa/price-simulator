@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>販売価格設定・利益シミュレーター</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --border: #d8dee4;
+      --text: #1f2328;
+      --muted: #59636e;
+      --primary: #0969da;
+      --danger: #cf222e;
+      --danger-bg: #ffebe9;
+      --warn: #9a6700;
+      --warn-bg: #fff8c5;
+      --ok: #1a7f37;
+      --ok-bg: #dafbe1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: #24292f;
+      color: #fff;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .app-title { margin: 0; font-size: 16px; font-weight: 600; }
+    .phase-badge { font-size: 11px; background: #444c56; padding: 2px 8px; border-radius: 12px; }
+    .app-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr 320px;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+    @media (max-width: 1200px) { .app-layout { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .panel-title {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    .form-group { margin-bottom: 12px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: var(--muted); }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .inline-input { width: 72px !important; padding: 3px 5px !important; text-align: right; font-size: 12px !important; }
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+    .btn {
+      padding: 5px 9px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      background: #f6f8fa;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #eaeef2; }
+    .btn-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .checkbox-row { display: flex; gap: 12px; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: #fafbfc; }
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px 8px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fafbfc;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: normal;
+      color: var(--text);
+      margin: 0;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .summary-card { border: 1px solid var(--border); border-radius: 4px; padding: 10px; background: #fafbfc; }
+    .summary-label { font-size: 11px; color: var(--muted); }
+    .summary-value { font-size: 17px; font-weight: 700; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+    th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: right; }
+    th { background: #f6f8fa; font-weight: 600; text-align: center; }
+    td.text-left { text-align: left; }
+    td.text-center { text-align: center; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok); }
+    .badge-warn { background: var(--warn-bg); color: var(--warn); }
+    .badge-danger { background: var(--danger-bg); color: var(--danger); }
+    .alert { padding: 8px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 12px; }
+    .alert-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid #d4a72c; }
+    .alert-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #ff8182; }
+    .section-subtitle { font-size: 13px; font-weight: 700; margin: 16px 0 8px 0; }
+    .proposal-card {
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: #fafbfc;
+      font-size: 12px;
+    }
+    .proposal-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .proposal-meta { color: var(--muted); margin-top: 4px; font-size: 11px; }
+    details { margin-bottom: 12px; }
+    summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--primary); }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-left">
+      <h1 class="app-title">販売価格設定・利益シミュレーター</h1>
+      <span class="phase-badge">単一HTML版（最安値平均・セット比較・改善提案）</span>
+    </div>
+    <div id="header-actions"></div>
+  </header>
+
+  <main class="app-layout">
+    <section class="panel panel-left">
+      <h2 class="panel-title">商品情報・送料条件</h2>
+      <div id="slot-input"></div>
+    </section>
+
+    <section class="panel panel-center">
+      <h2 class="panel-title">計算結果・セット販売比較</h2>
+      <div id="slot-result"></div>
+      <div id="slot-set"></div>
+    </section>
+
+    <section class="panel panel-right">
+      <h2 class="panel-title">販売方法の改善提案</h2>
+      <div id="slot-proposal"></div>
+    </section>
+  </main>
+
+  <script>
+    /* =========================================================================
+       1. CORE: マイクロカーネル（Hub）
+       ========================================================================= */
+    window.AppHub = (function () {
+      const plugins = new Map();
+      const listeners = new Map();
+
+      const state = {
+        product: {
+          name: '',
+          costPrice: 1000,
+          costTaxType: 'excluded',
+          taxRate: 10,
+          size: '80'
+        },
+        shipping: {
+          enabledCarriers: ['post', 'sagawa', 'yamato'], // 利用する運送会社
+          excludePreset: 'patternA',                     // 'none' | 'patternA' | 'patternB' | 'custom'
+          excludedRegions: ['hokkaido', 'okinawa'],
+          excludeRemoteIsland: true,
+          customMinShipping: ''                          // 最安送料の手入力登録（税抜・空欄なら自動計算）
+        },
+        pricing: {
+          roundingMode: 'ceil',
+          roundingUnit: 1,
+          channelFeeRate: 0
+        },
+        sets: [
+          { qty: 1, size: '80' },
+          { qty: 2, size: '80' },
+          { qty: 3, size: '100' },
+          { qty: 4, size: '100' }
+        ],
+        master: null
+      };
+
+      function registerPlugin(plugin) {
+        if (!plugin || !plugin.id || typeof plugin.init !== 'function') {
+          throw new Error('プラグインには id と init() が必要です。');
+        }
+        plugins.set(plugin.id, plugin);
+      }
+
+      function on(eventName, handler) {
+        if (!listeners.has(eventName)) listeners.set(eventName, []);
+        listeners.get(eventName).push(handler);
+      }
+
+      function emit(eventName, payload) {
+        (listeners.get(eventName) || []).forEach((fn) => fn(payload, state));
+      }
+
+      function getState() { return state; }
+
+      function updateState(path, value, silent = false) {
+        const keys = path.split('.');
+        let target = state;
+        for (let i = 0; i < keys.length - 1; i++) target = target[keys[i]];
+        target[keys[keys.length - 1]] = value;
+        if (!silent) emit('state:changed', { path, value });
+      }
+
+      // 共通計算ロジック（各プラグインから利用）
+      const calc = {
+        getCarrierRate(regionId, size, carrierId) {
+          const regionRates = state.master.rates[regionId];
+          if (!regionRates) return { price: null, note: '' };
+          if (carrierId === 'sagawa' && size === '120') {
+            const r140 = regionRates['140'] ? regionRates['140'].sagawa : null;
+            const r120 = regionRates['120'] ? regionRates['120'].sagawa : null;
+            const applied = r140 !== null ? r140 : r120;
+            return { price: applied, note: applied !== null ? '140サイズ料金適用' : '' };
+          }
+          const sizeRates = regionRates[size];
+          const price = sizeRates && typeof sizeRates[carrierId] === 'number' ? sizeRates[carrierId] : null;
+          return { price, note: '' };
+        },
+
+        // 指定サイズ・除外地域・利用運送会社での「各地域最安値平均」を算出
+        calcAverageMinShipping(size, excludedRegions, enabledCarriers) {
+          const targetRegions = state.master.regions.filter((r) => !excludedRegions.includes(r.id));
+          if (targetRegions.length === 0) return { avg: null, count: 0, missing: [], error: '対象地域が0件です' };
+          if (enabledCarriers.length === 0) return { avg: null, count: 0, missing: [], error: '運送会社が未選択です' };
+
+          const usedPrices = [];
+          const missing = [];
+          const details = [];
+
+          targetRegions.forEach((r) => {
+            let minPrice = null;
+            let minCarriers = [];
+            enabledCarriers.forEach((cid) => {
+              const res = calc.getCarrierRate(r.id, size, cid);
+              if (res.price !== null) {
+                if (minPrice === null || res.price < minPrice) {
+                  minPrice = res.price;
+                  minCarriers = [cid];
+                } else if (res.price === minPrice) {
+                  minCarriers.push(cid);
+                }
+              }
+            });
+            if (minPrice !== null) {
+              usedPrices.push(minPrice);
+              details.push({ region: r, minPrice, minCarriers });
+            } else {
+              missing.push(r.name);
+            }
+          });
+
+          if (usedPrices.length === 0) {
+            return { avg: null, count: 0, missing, error: `サイズ「${size}」の運賃データが未登録です` };
+          }
+          const rawAvg = usedPrices.reduce((a, b) => a + b, 0) / usedPrices.length;
+          const avg = utils.applyRounding(rawAvg, state.pricing.roundingMode, 1);
+          return { avg, rawAvg, count: usedPrices.length, missing, details, error: null };
+        }
+      };
+
+      const utils = {
+        toNonNegativeNumber(val) {
+          const num = Number(val);
+          if (val === '' || val === null || !Number.isFinite(num) || num < 0) return null;
+          return num;
+        },
+        applyRounding(value, mode = 'ceil', unit = 1) {
+          if (!Number.isFinite(value) || unit <= 0) return null;
+          const scaled = value / unit;
+          if (mode === 'floor') return Math.floor(scaled) * unit;
+          if (mode === 'round') return Math.round(scaled) * unit;
+          return Math.ceil(scaled) * unit;
+        },
+        formatYen(value) {
+          if (value === null || value === undefined || !Number.isFinite(value)) return 'データなし';
+          return `${Math.round(value).toLocaleString('ja-JP')}円`;
+        },
+        createEl(tag, attrs = {}, text = '') {
+          const el = document.createElement(tag);
+          Object.entries(attrs).forEach(([k, v]) => {
+            if (k === 'className') el.className = v;
+            else if (k === 'checked') el.checked = Boolean(v);
+            else if (k.startsWith('on') && typeof v === 'function') {
+              el.addEventListener(k.slice(2).toLowerCase(), v);
+            } else {
+              el.setAttribute(k, v);
+            }
+          });
+          if (text !== '') el.textContent = text;
+          return el;
+        }
+      };
+
+      function init() {
+        state.master = window.INITIAL_RATE_DATA;
+        plugins.forEach((p) => p.init({ getState, updateState, on, emit, utils, calc }));
+        emit('app:ready', state);
+      }
+
+      return { registerPlugin, init, utils };
+    })();
+
+    /* =========================================================================
+       2. DATA: 運賃マスターデータ（すべて税抜 / 未登録・不鮮明は null）
+       ========================================================================= */
+    window.INITIAL_RATE_DATA = {
+      carriers: [
+        { id: 'post', name: '郵便（〒）' },
+        { id: 'sagawa', name: '佐川急便' },
+        { id: 'yamato', name: 'ヤマト運輸' }
+      ],
+      sizes: ['60', '80', '100', '120', '140', '160', '170', '180', '200', '220', '240', '260'],
+      regions: [
+        { id: 'hokkaido', name: '北海道' },
+        { id: 'tohoku_n', name: '東北（北）' },
+        { id: 'tohoku_s', name: '東北（南）' },
+        { id: 'kanto',    name: '関東' },
+        { id: 'shinetsu', name: '信越' },
+        { id: 'tokai',    name: '東海' },
+        { id: 'hokuriku', name: '北陸' },
+        { id: 'kansai',   name: '関西' },
+        { id: 'chugoku',  name: '中国' },
+        { id: 'shikoku',  name: '四国' },
+        { id: 'fukuoka',  name: '福岡' },
+        { id: 'kyushu_n', name: '九州（北）' },
+        { id: 'kyushu_s', name: '九州（南）' },
+        { id: 'okinawa',  name: '沖縄' }
+      ],
+      rates: {
+        hokkaido: {
+          '60':  { post: 1285, sagawa: 960,  yamato: 1500 },
+          '80':  { post: 1410, sagawa: 1170, yamato: 1550 },
+          '100': { post: 1535, sagawa: 1490, yamato: 1600 },
+          '120': { post: 1844, sagawa: 1810, yamato: 1650 },
+          '140': { post: 2111, sagawa: 1810, yamato: 1700 }
+        },
+        tohoku_n: {
+          '60':  { post: 1285, sagawa: 750,  yamato: 950  },
+          '80':  { post: 1410, sagawa: 850,  yamato: 1000 },
+          '100': { post: 1535, sagawa: 1060, yamato: 1020 },
+          '120': { post: 1844, sagawa: 1280, yamato: 1080 },
+          '140': { post: 2111, sagawa: 1280, yamato: 1120 }
+        },
+        tohoku_s: {
+          '60':  { post: 1285, sagawa: 750,  yamato: 950  },
+          '80':  { post: 1410, sagawa: 850,  yamato: 1000 },
+          '100': { post: 1535, sagawa: 1060, yamato: 1020 },
+          '120': { post: 1844, sagawa: 1280, yamato: 1080 },
+          '140': { post: 2111, sagawa: 1280, yamato: 1120 }
+        },
+        kanto: {
+          '60':  { post: 619,  sagawa: 530,  yamato: 760 },
+          '80':  { post: 760,  sagawa: 640,  yamato: 800 },
+          '100': { post: 972,  sagawa: 750,  yamato: 820 },
+          '120': { post: 1202, sagawa: 960,  yamato: 850 },
+          '140': { post: 1582, sagawa: 960,  yamato: 950 }
+        },
+        shinetsu: {
+          '60':  { post: 619,  sagawa: 590,  yamato: 760 },
+          '80':  { post: 760,  sagawa: 640,  yamato: 800 },
+          '100': { post: 972,  sagawa: 750,  yamato: 820 },
+          '120': { post: 1202, sagawa: 910,  yamato: 850 },
+          '140': { post: 1582, sagawa: 910,  yamato: 950 }
+        },
+        tokai: {
+          '60':  { post: 567,  sagawa: 530,  yamato: 650 },
+          '80':  { post: 680,  sagawa: 590,  yamato: 700 },
+          '100': { post: 822,  sagawa: 690,  yamato: 720 },
+          '120': { post: 982,  sagawa: 830,  yamato: 750 },
+          '140': { post: 1282, sagawa: 830,  yamato: 850 }
+        },
+        hokuriku: {
+          '60':  { post: 567,  sagawa: 490,  yamato: 650 },
+          '80':  { post: 680,  sagawa: 500,  yamato: 700 },
+          '100': { post: 822,  sagawa: 530,  yamato: 720 },
+          '120': { post: 982,  sagawa: 830,  yamato: 750 },
+          '140': { post: 1282, sagawa: 830,  yamato: 850 }
+        },
+        kansai: {
+          '60':  { post: null, sagawa: 470,  yamato: 480 },
+          '80':  { post: 650,  sagawa: 480,  yamato: 500 },
+          '100': { post: 772,  sagawa: 530,  yamato: 580 },
+          '120': { post: 902,  sagawa: 740,  yamato: 650 },
+          '140': { post: 1172, sagawa: 740,  yamato: 710 }
+        },
+        chugoku: {
+          '60':  { post: 537,  sagawa: 430,  yamato: 420 },
+          '80':  { post: 630,  sagawa: 440,  yamato: 440 },
+          '100': { post: 732,  sagawa: 460,  yamato: 490 },
+          '120': { post: 842,  sagawa: 670,  yamato: 570 },
+          '140': { post: 1062, sagawa: 670,  yamato: 670 }
+        },
+        shikoku: {
+          '60':  { post: 547,  sagawa: 450,  yamato: 470 },
+          '80':  { post: 650,  sagawa: 460,  yamato: 500 },
+          '100': { post: 772,  sagawa: 530,  yamato: 580 },
+          '120': { post: 902,  sagawa: 750,  yamato: 650 },
+          '140': { post: 1172, sagawa: 750,  yamato: 710 }
+        },
+        fukuoka: {
+          '60':  { post: 527,  sagawa: 430,  yamato: 400 },
+          '80':  { post: 620,  sagawa: 440,  yamato: 420 },
+          '100': { post: 722,  sagawa: 460,  yamato: 470 },
+          '120': { post: 812,  sagawa: 580,  yamato: 530 },
+          '140': { post: 1002, sagawa: 580,  yamato: 650 }
+        },
+        kyushu_n: {
+          '60':  { post: 537,  sagawa: 430,  yamato: 400 },
+          '80':  { post: 630,  sagawa: 440,  yamato: 420 },
+          '100': { post: 732,  sagawa: 460,  yamato: 470 },
+          '120': { post: 842,  sagawa: 580,  yamato: 530 },
+          '140': { post: 1062, sagawa: 580,  yamato: 650 }
+        },
+        kyushu_s: {
+          '60':  { post: 537,  sagawa: 430,  yamato: 400 },
+          '80':  { post: 630,  sagawa: 440,  yamato: 420 },
+          '100': { post: 732,  sagawa: 460,  yamato: 470 },
+          '120': { post: 842,  sagawa: 620,  yamato: 530 },
+          '140': { post: 1062, sagawa: 620,  yamato: 650 }
+        },
+        okinawa: {
+          '60':  { post: 875,  sagawa: null, yamato: 960  },
+          '80':  { post: 1116, sagawa: null, yamato: 1490 },
+          '100': { post: 1366, sagawa: null, yamato: 1990 },
+          '120': { post: 1607, sagawa: null, yamato: 2490 },
+          '140': { post: 1857, sagawa: null, yamato: 3050 }
+        }
+      }
+    };
+
+    /* =========================================================================
+       3. PLUGIN: 基本計算・最安値平均・運賃編集
+       ========================================================================= */
+    AppHub.registerPlugin({
+      id: 'basic-calculator',
+      init(api) {
+        const COEFFICIENTS = [
+          { value: 0.70, label: '0.70（理想ライン）' },
+          { value: 0.75, label: '0.75（調整範囲）' },
+          { value: 0.80, label: '0.80（調整範囲）' },
+          { value: 0.85, label: '0.85（調整下限）' },
+          { value: 0.90, label: '0.90（社内赤字ライン）' }
+        ];
+
+        const inputSlot = document.getElementById('slot-input');
+        const resultSlot = document.getElementById('slot-result');
+
+        function applyPreset(preset) {
+          api.updateState('shipping.excludePreset', preset, true);
+          if (preset === 'none') {
+            api.updateState('shipping.excludedRegions', [], true);
+            api.updateState('shipping.excludeRemoteIsland', false, true);
+          } else if (preset === 'patternA') {
+            api.updateState('shipping.excludedRegions', ['hokkaido', 'okinawa'], true);
+            api.updateState('shipping.excludeRemoteIsland', true, true);
+          } else if (preset === 'patternB') {
+            api.updateState('shipping.excludedRegions', ['hokkaido', 'tohoku_n', 'tohoku_s', 'okinawa'], true);
+            api.updateState('shipping.excludeRemoteIsland', true, true);
+          }
+          renderInputs();
+          api.emit('state:changed', { path: 'shipping.excludePreset', value: preset });
+        }
+
+        function renderInputs() {
+          const { product, shipping, pricing, master } = api.getState();
+          const { createEl } = api.utils;
+          inputSlot.textContent = '';
+
+          const addField = (labelText, control, hintText = '') => {
+            const g = createEl('div', { className: 'form-group' });
+            g.appendChild(createEl('label', {}, labelText));
+            g.appendChild(control);
+            if (hintText) g.appendChild(createEl('div', { className: 'hint' }, hintText));
+            return g;
+          };
+
+          inputSlot.appendChild(addField('商品名', createEl('input', {
+            type: 'text', value: product.name, placeholder: '例：テスト商品A',
+            onInput: (e) => api.updateState('product.name', e.target.value)
+          })));
+
+          const costRow = createEl('div', { className: 'form-row' });
+          costRow.appendChild(addField('仕切価格（円）', createEl('input', {
+            type: 'number', min: '0', value: product.costPrice,
+            onInput: (e) => api.updateState('product.costPrice', e.target.value)
+          })));
+          const taxTypeSel = createEl('select', {
+            onChange: (e) => api.updateState('product.costTaxType', e.target.value)
+          });
+          [['excluded', '税抜（標準）'], ['included', '税込（現行式優先）']].forEach(([v, t]) => {
+            const o = createEl('option', { value: v }, t);
+            if (product.costTaxType === v) o.selected = true;
+            taxTypeSel.appendChild(o);
+          });
+          costRow.appendChild(addField('仕切価格の税区分', taxTypeSel));
+          inputSlot.appendChild(costRow);
+
+          const sizeRow = createEl('div', { className: 'form-row' });
+          const sizeSel = createEl('select', {
+            onChange: (e) => {
+              api.updateState('product.size', e.target.value, true);
+              api.getState().sets[0].size = e.target.value;
+              api.emit('state:changed', { path: 'product.size', value: e.target.value });
+            }
+          });
+          master.sizes.forEach((s) => {
+            const o = createEl('option', { value: s }, `${s}サイズ`);
+            if (product.size === s) o.selected = true;
+            sizeSel.appendChild(o);
+          });
+          sizeRow.appendChild(addField('商品サイズ', sizeSel));
+          sizeRow.appendChild(addField('消費税率（%）', createEl('input', {
+            type: 'number', min: '0', max: '100', value: product.taxRate,
+            onInput: (e) => api.updateState('product.taxRate', e.target.value)
+          })));
+          inputSlot.appendChild(sizeRow);
+
+          // 利用する運送会社（チェックボックス）
+          const carrierGroup = createEl('div', { className: 'form-group' });
+          carrierGroup.appendChild(createEl('label', {}, '利用する運送会社（各地域の最安値を自動採用）'));
+          const cRow = createEl('div', { className: 'checkbox-row' });
+          master.carriers.forEach((c) => {
+            const lbl = createEl('label', { className: 'checkbox-item' });
+            lbl.appendChild(createEl('input', {
+              type: 'checkbox',
+              checked: shipping.enabledCarriers.includes(c.id),
+              onChange: (e) => {
+                const next = e.target.checked
+                  ? [...shipping.enabledCarriers, c.id]
+                  : shipping.enabledCarriers.filter((id) => id !== c.id);
+                api.updateState('shipping.enabledCarriers', next);
+              }
+            }));
+            lbl.appendChild(document.createTextNode(c.name));
+            cRow.appendChild(lbl);
+          });
+          carrierGroup.appendChild(cRow);
+          inputSlot.appendChild(carrierGroup);
+
+          // 送料見積もり対象地域
+          const presetGroup = createEl('div', { className: 'form-group' });
+          presetGroup.appendChild(createEl('label', {}, '送料見積もり対象地域（平均から除外）'));
+          const btnGroup = createEl('div', { className: 'btn-group' });
+          [
+            ['none', 'なし（全地域）'],
+            ['patternA', '北海道・沖縄・離島'],
+            ['patternB', '北海道・東北・沖縄・離島']
+          ].forEach(([key, text]) => {
+            btnGroup.appendChild(createEl('button', {
+              type: 'button',
+              className: `btn ${shipping.excludePreset === key ? 'btn-active' : ''}`,
+              onClick: () => applyPreset(key)
+            }, text));
+          });
+          presetGroup.appendChild(btnGroup);
+
+          const details = createEl('details');
+          details.appendChild(createEl('summary', {}, '除外地域を個別に変更する'));
+          const grid = createEl('div', { className: 'checkbox-grid' });
+          master.regions.forEach((r) => {
+            const lbl = createEl('label', { className: 'checkbox-item' });
+            lbl.appendChild(createEl('input', {
+              type: 'checkbox',
+              checked: shipping.excludedRegions.includes(r.id),
+              onChange: (e) => {
+                const next = e.target.checked
+                  ? [...shipping.excludedRegions, r.id]
+                  : shipping.excludedRegions.filter((id) => id !== r.id);
+                api.updateState('shipping.excludePreset', 'custom', true);
+                api.updateState('shipping.excludedRegions', next);
+                renderInputs();
+              }
+            }));
+            lbl.appendChild(document.createTextNode(r.name));
+            grid.appendChild(lbl);
+          });
+          const islandLbl = createEl('label', { className: 'checkbox-item' });
+          islandLbl.appendChild(createEl('input', {
+            type: 'checkbox',
+            checked: shipping.excludeRemoteIsland,
+            onChange: (e) => {
+              api.updateState('shipping.excludePreset', 'custom', true);
+              api.updateState('shipping.excludeRemoteIsland', e.target.checked);
+              renderInputs();
+            }
+          }));
+          islandLbl.appendChild(document.createTextNode('離島（別途見積）'));
+          grid.appendChild(islandLbl);
+          details.appendChild(grid);
+          presetGroup.appendChild(details);
+          inputSlot.appendChild(presetGroup);
+
+          // 最安送料の直接登録（任意）
+          inputSlot.appendChild(addField(
+            '最安送料を直接登録（税抜・任意）',
+            createEl('input', {
+              type: 'number', min: '0', value: shipping.customMinShipping,
+              placeholder: '空欄なら運賃表から自動計算',
+              onInput: (e) => api.updateState('shipping.customMinShipping', e.target.value)
+            }),
+            '※メール便や特約運賃など、運賃表外の最安値を登録したい場合に入力'
+          ));
+
+          // 端数処理 & 販売手数料
+          const optRow = createEl('div', { className: 'form-row' });
+          const roundSel = createEl('select', {
+            onChange: (e) => api.updateState('pricing.roundingMode', e.target.value)
+          });
+          [['ceil', '切り上げ（標準）'], ['round', '四捨五入'], ['floor', '切り捨て']].forEach(([v, t]) => {
+            const o = createEl('option', { value: v }, t);
+            if (pricing.roundingMode === v) o.selected = true;
+            roundSel.appendChild(o);
+          });
+          optRow.appendChild(addField('端数処理（1円単位）', roundSel));
+          optRow.appendChild(addField('販売手数料率（%・任意）', createEl('input', {
+            type: 'number', min: '0', max: '99', step: '0.1', value: pricing.channelFeeRate,
+            onInput: (e) => api.updateState('pricing.channelFeeRate', e.target.value)
+          })));
+          inputSlot.appendChild(optRow);
+        }
+
+        function renderResults() {
+          const { product, shipping, pricing, master } = api.getState();
+          const { createEl, toNonNegativeNumber, applyRounding, formatYen } = api.utils;
+          resultSlot.textContent = '';
+
+          const costPrice = toNonNegativeNumber(product.costPrice);
+          const taxRate = toNonNegativeNumber(product.taxRate);
+          const feeRate = toNonNegativeNumber(pricing.channelFeeRate) || 0;
+          const customShip = shipping.customMinShipping !== '' ? toNonNegativeNumber(shipping.customMinShipping) : null;
+
+          if (costPrice === null || taxRate === null) {
+            resultSlot.appendChild(createEl('div', { className: 'alert alert-danger' },
+              '仕切価格または消費税率に0以上の数値を入力してください。'));
+            return;
+          }
+
+          let usedShipping = null;
+          let shippingLabel = '';
+          let avgResult = null;
+
+          if (customShip !== null) {
+            usedShipping = customShip;
+            shippingLabel = '登録した最安送料（税抜）';
+          } else {
+            avgResult = api.calc.calcAverageMinShipping(product.size, shipping.excludedRegions, shipping.enabledCarriers);
+            if (avgResult.error) {
+              resultSlot.appendChild(createEl('div', { className: 'alert alert-warn' }, avgResult.error));
+            } else {
+              usedShipping = avgResult.avg;
+              shippingLabel = `最安値平均送料（税抜・${avgResult.count}地域）`;
+              if (avgResult.missing.length > 0) {
+                resultSlot.appendChild(createEl('div', { className: 'alert alert-warn' },
+                  `未登録地域（${avgResult.missing.join('・')}）は0円扱いせず平均から除外しています。`));
+              }
+            }
+          }
+
+          if (usedShipping !== null) {
+            const excludedNames = master.regions
+              .filter((r) => shipping.excludedRegions.includes(r.id))
+              .map((r) => r.name);
+            if (shipping.excludeRemoteIsland) excludedNames.push('離島');
+
+            const taxFactor = 1 + taxRate / 100;
+            const baseWithTax = (costPrice + usedShipping) * taxFactor;
+
+            // サマリーカード
+            const summary = createEl('div', { className: 'summary-grid' });
+            [
+              { label: '仕切価格', value: formatYen(costPrice) },
+              { label: shippingLabel, value: formatYen(usedShipping) },
+              { label: `計算基準額（×${taxFactor.toFixed(2)}）`, value: formatYen(applyRounding(baseWithTax, pricing.roundingMode, 1)) },
+              { label: '見積もり対象（除外）', value: excludedNames.length > 0 ? excludedNames.join('・') : 'なし（全地域）' }
+            ].forEach((item) => {
+              const card = createEl('div', { className: 'summary-card' });
+              card.appendChild(createEl('div', { className: 'summary-label' }, item.label));
+              const vEl = createEl('div', { className: 'summary-value' }, item.value);
+              if (item.label.includes('除外')) vEl.style.fontSize = '13px';
+              card.appendChild(vEl);
+              summary.appendChild(card);
+            });
+            resultSlot.appendChild(summary);
+
+            // 係数別価格テーブル
+            const feeLabel = feeRate > 0 ? `参考利益（手数料${feeRate}%後）` : '参考利益（手数料未設定）';
+            resultSlot.appendChild(createEl('div', { className: 'section-subtitle' }, '係数別 販売基準価格（1個売り）'));
+            const priceTable = createEl('table');
+            const pHead = createEl('tr');
+            ['利益設定係数', '販売基準価格', '計算上の粗利', '粗利率', feeLabel, '判定'].forEach((h) => pHead.appendChild(createEl('th', {}, h)));
+            priceTable.appendChild(pHead);
+
+            COEFFICIENTS.forEach((coef) => {
+              const sellPrice = applyRounding(baseWithTax / coef.value, pricing.roundingMode, pricing.roundingUnit);
+              const grossProfit = sellPrice - baseWithTax;
+              const grossMargin = sellPrice > 0 ? (grossProfit / sellPrice) * 100 : 0;
+              const refProfit = grossProfit - (sellPrice * feeRate / 100);
+
+              const tr = createEl('tr');
+              tr.appendChild(createEl('td', { className: 'text-left' }, coef.label));
+              tr.appendChild(createEl('td', {}, formatYen(sellPrice)));
+              tr.appendChild(createEl('td', {}, formatYen(Math.floor(grossProfit))));
+              tr.appendChild(createEl('td', {}, `${grossMargin.toFixed(1)}%`));
+              tr.appendChild(createEl('td', {}, formatYen(Math.floor(refProfit))));
+
+              const bTd = createEl('td', { className: 'text-center' });
+              if (coef.value >= 0.90) bTd.appendChild(createEl('span', { className: 'badge badge-danger' }, '社内赤字ライン'));
+              else if (refProfit <= 0 && feeRate > 0) bTd.appendChild(createEl('span', { className: 'badge badge-danger' }, '手数料後赤字'));
+              else if (coef.value === 0.70) bTd.appendChild(createEl('span', { className: 'badge badge-ok' }, '理想'));
+              else bTd.appendChild(createEl('span', { className: 'badge badge-warn' }, '調整範囲'));
+              tr.appendChild(bTd);
+              priceTable.appendChild(tr);
+            });
+            resultSlot.appendChild(priceTable);
+          }
+
+          // 地域別送料一覧（編集・登録も可能）
+          const rateDetails = createEl('details');
+          rateDetails.appendChild(createEl('summary', {}, `地域別送料一覧・運賃登録（${product.size}サイズ・税抜）`));
+          const rTable = createEl('table');
+          const rHead = createEl('tr');
+          ['地域', '対象', '郵便（〒）', '佐川急便', 'ヤマト運輸', '採用最安'].forEach((h) => rHead.appendChild(createEl('th', {}, h)));
+          rTable.appendChild(rHead);
+
+          const carrierNameMap = { post: '郵便', sagawa: '佐川', yamato: 'ヤマト' };
+
+          master.regions.forEach((r) => {
+            const isExcluded = shipping.excludedRegions.includes(r.id);
+            const tr = createEl('tr');
+            if (isExcluded) tr.style.background = '#f6f8fa';
+            tr.appendChild(createEl('td', { className: 'text-left' }, r.name));
+            tr.appendChild(createEl('td', { className: 'text-center' }, isExcluded ? '除外' : '対象'));
+
+            let minVal = null;
+            let minNames = [];
+
+            ['post', 'sagawa', 'yamato'].forEach((cid) => {
+              const rateObj = api.calc.getCarrierRate(r.id, product.size, cid);
+              const td = createEl('td', { className: 'text-center' });
+              const inp = createEl('input', {
+                type: 'number',
+                min: '0',
+                className: 'inline-input',
+                value: rateObj.price !== null ? rateObj.price : '',
+                placeholder: '-',
+                onChange: (e) => {
+                  const val = e.target.value === '' ? null : toNonNegativeNumber(e.target.value);
+                  if (!master.rates[r.id]) master.rates[r.id] = {};
+                  if (!master.rates[r.id][product.size]) master.rates[r.id][product.size] = { post: null, sagawa: null, yamato: null };
+                  master.rates[r.id][product.size][cid] = val;
+                  api.emit('state:changed', { path: 'master.rates' });
+                }
+              });
+              td.appendChild(inp);
+              tr.appendChild(td);
+
+              if (shipping.enabledCarriers.includes(cid) && rateObj.price !== null) {
+                if (minVal === null || rateObj.price < minVal) {
+                  minVal = rateObj.price;
+                  minNames = [carrierNameMap[cid]];
+                } else if (rateObj.price === minVal) {
+                  minNames.push(carrierNameMap[cid]);
+                }
+              }
+            });
+
+            tr.appendChild(createEl('td', {}, minVal !== null ? `${formatYen(minVal)} (${minNames.join('/')})` : 'データなし'));
+            rTable.appendChild(tr);
+          });
+          rateDetails.appendChild(rTable);
+          resultSlot.appendChild(rateDetails);
+        }
+
+        api.on('app:ready', () => { renderInputs(); renderResults(); });
+        api.on('state:changed', () => { renderResults(); });
+      }
+    });
+
+    /* =========================================================================
+       4. PLUGIN: セット販売比較（1〜4個・同梱サイズ別）
+       ========================================================================= */
+    AppHub.registerPlugin({
+      id: 'set-simulator',
+      init(api) {
+        const setSlot = document.getElementById('slot-set');
+
+        function renderSets() {
+          const { product, shipping, pricing, sets, master } = api.getState();
+          const { createEl, toNonNegativeNumber, applyRounding, formatYen } = api.utils;
+          setSlot.textContent = '';
+
+          const costPrice = toNonNegativeNumber(product.costPrice);
+          const taxRate = toNonNegativeNumber(product.taxRate);
+          if (costPrice === null || taxRate === null) return;
+
+          setSlot.appendChild(createEl('div', { className: 'section-subtitle' }, 'セット販売比較（係数0.70 / 同梱サイズ別）'));
+          const table = createEl('table');
+          const head = createEl('tr');
+          ['数量', '仕切合計', '梱包後サイズ', '採用送料（税抜）', '販売基準価格(0.70)', '1個あたり価格', '1個あたり送料負担'].forEach((h) => {
+            head.appendChild(createEl('th', {}, h));
+          });
+          table.appendChild(head);
+
+          const taxFactor = 1 + taxRate / 100;
+          const customShip = shipping.customMinShipping !== '' ? toNonNegativeNumber(shipping.customMinShipping) : null;
+
+          sets.forEach((s, idx) => {
+            const totalCost = costPrice * s.qty;
+            const shipRes = customShip !== null && s.qty === 1
+              ? { avg: customShip }
+              : api.calc.calcAverageMinShipping(s.size, shipping.excludedRegions, shipping.enabledCarriers);
+            const shipCost = shipRes.avg;
+
+            const tr = createEl('tr');
+            tr.appendChild(createEl('td', { className: 'text-center' }, `${s.qty}個`));
+            tr.appendChild(createEl('td', {}, formatYen(totalCost)));
+
+            const sizeTd = createEl('td', { className: 'text-center' });
+            const sel = createEl('select', {
+              onChange: (e) => {
+                sets[idx].size = e.target.value;
+                api.emit('state:changed', { path: 'sets' });
+              }
+            });
+            master.sizes.forEach((sz) => {
+              const o = createEl('option', { value: sz }, `${sz}サイズ`);
+              if (s.size === sz) o.selected = true;
+              sel.appendChild(o);
+            });
+            sizeTd.appendChild(sel);
+            tr.appendChild(sizeTd);
+
+            if (shipCost !== null) {
+              const baseWithTax = (totalCost + shipCost) * taxFactor;
+              const sellPrice = applyRounding(baseWithTax / 0.70, pricing.roundingMode, pricing.roundingUnit);
+              tr.appendChild(createEl('td', {}, formatYen(shipCost)));
+              tr.appendChild(createEl('td', {}, formatYen(sellPrice)));
+              tr.appendChild(createEl('td', {}, formatYen(Math.ceil(sellPrice / s.qty))));
+              tr.appendChild(createEl('td', {}, formatYen(Math.ceil(shipCost / s.qty))));
+            } else {
+              tr.appendChild(createEl('td', { colspan: '4', className: 'text-center' }, '運賃データ未登録'));
+            }
+            table.appendChild(tr);
+          });
+          setSlot.appendChild(table);
+        }
+
+        api.on('app:ready', renderSets);
+        api.on('state:changed', renderSets);
+      }
+    });
+
+    /* =========================================================================
+       5. PLUGIN: 販売方法の改善提案（計算根拠付き）
+       ========================================================================= */
+    AppHub.registerPlugin({
+      id: 'proposal-engine',
+      init(api) {
+        const propSlot = document.getElementById('slot-proposal');
+
+        function renderProposals() {
+          const { product, shipping, pricing, sets } = api.getState();
+          const { createEl, toNonNegativeNumber, applyRounding, formatYen } = api.utils;
+          propSlot.textContent = '';
+
+          const costPrice = toNonNegativeNumber(product.costPrice);
+          const taxRate = toNonNegativeNumber(product.taxRate);
+          if (costPrice === null || taxRate === null) return;
+
+          const curRes = api.calc.calcAverageMinShipping(product.size, shipping.excludedRegions, shipping.enabledCarriers);
+          const curShip = shipping.customMinShipping !== '' ? toNonNegativeNumber(shipping.customMinShipping) : curRes.avg;
+          if (curShip === null) return;
+
+          const taxFactor = 1 + taxRate / 100;
+          const curPrice070 = applyRounding((costPrice + curShip) * taxFactor / 0.70, pricing.roundingMode, pricing.roundingUnit);
+          const proposals = [];
+
+          // 提案1：見積もり対象地域の拡大（パターンA / パターンB）
+          if (shipping.customMinShipping === '') {
+            const pBExcluded = ['hokkaido', 'tohoku_n', 'tohoku_s', 'okinawa'];
+            const pBRes = api.calc.calcAverageMinShipping(product.size, pBExcluded, shipping.enabledCarriers);
+            if (pBRes.avg !== null && pBRes.avg < curShip) {
+              const pBPrice = applyRounding((costPrice + pBRes.avg) * taxFactor / 0.70, pricing.roundingMode, pricing.roundingUnit);
+              proposals.push({
+                title: '遠方地域を送料見積もり対象にする（パターンB）',
+                body: `北海道・東北・沖縄・離島を見積もり対象にすると、平均送料が ${formatYen(curShip)} → ${formatYen(pBRes.avg)}（-${formatYen(curShip - pBRes.avg)}）に下がります。`,
+                meta: `係数0.70の販売基準価格：${formatYen(curPrice070)} → ${formatYen(pBPrice)}`
+              });
+            }
+          }
+
+          // 提案2：セット販売による1個あたり送料負担の軽減
+          const set2 = sets.find((s) => s.qty === 2);
+          if (set2) {
+            const s2Res = api.calc.calcAverageMinShipping(set2.size, shipping.excludedRegions, shipping.enabledCarriers);
+            if (s2Res.avg !== null) {
+              const perUnitShip2 = Math.ceil(s2Res.avg / 2);
+              if (perUnitShip2 < curShip) {
+                const s2Price = applyRounding((costPrice * 2 + s2Res.avg) * taxFactor / 0.70, pricing.roundingMode, pricing.roundingUnit);
+                proposals.push({
+                  title: `2個セット販売（梱包サイズ：${set2.size}）の検討`,
+                  body: `1個あたり送料負担が ${formatYen(curShip)} → ${formatYen(perUnitShip2)} に圧縮されます。`,
+                  meta: `2個セット価格(0.70)：${formatYen(s2Price)}（1個あたり ${formatYen(Math.ceil(s2Price / 2))}） ※実際の同梱サイズをご確認ください`
+                });
+              }
+            }
+          }
+
+          // 提案3：送料比率が高い場合の注意
+          if (curShip >= costPrice * 0.5) {
+            proposals.push({
+              title: '送料負担率が高い商品です',
+              body: `仕切価格（${formatYen(costPrice)}）に対して送料（${formatYen(curShip)}）が50%以上を占めています。1個売りでは価格競争力が落ちやすいため、セット販売や小型便（最安送料の直接登録）の検討をおすすめします。`,
+              meta: '※根拠：送料 ÷ 仕切価格 ≧ 50%'
+            });
+          }
+
+          if (proposals.length === 0) {
+            propSlot.appendChild(createEl('p', { className: 'hint' }, '現在の条件で大きな送料圧迫は検出されていません。'));
+            return;
+          }
+
+          proposals.forEach((p) => {
+            const card = createEl('div', { className: 'proposal-card' });
+            card.appendChild(createEl('div', { className: 'proposal-title' }, p.title));
+            card.appendChild(createEl('div', {}, p.body));
+            card.appendChild(createEl('div', { className: 'proposal-meta' }, p.meta));
+            propSlot.appendChild(card);
+          });
+        }
+
+        api.on('app:ready', renderProposals);
+        api.on('state:changed', renderProposals);
+      }
+    });
+
+    // 起動
+    window.addEventListener('DOMContentLoaded', () => AppHub.init());
+  </script>
+</body>
+</html>
